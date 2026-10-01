@@ -6,6 +6,7 @@ const { getReportData } = require("./reportData");
 const { generatePdf } = require("./generateReport");
 
 const app = express();
+app.use(express.json());
 const PORT = 3000;
 
 const db = new sqlite3.Database("./data/report.db");
@@ -26,10 +27,41 @@ app.get("/health", (req, res) => {
 // Generate a report
 app.post("/reports", async (req, res) => {
   try {
-    // 1. Get aggregated report data
+    const force = req.body?.force === true;
+
+    // Check whether today's report already exists.
+    if (!force) {
+      const existingReport = await new Promise((resolve, reject) => {
+        db.get(
+          `
+          SELECT id, path, created_at
+          FROM reports
+          WHERE date(created_at) = date('now')
+          ORDER BY id DESC
+          LIMIT 1
+          `,
+          (err, row) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(row);
+            }
+          }
+        );
+      });
+
+      if (existingReport) {
+        return res.status(200).json({
+          id: existingReport.id,
+          file: `/reports/${existingReport.id}/file`
+        });
+      }
+    }
+
+    // Generate new report data.
     const report = await getReportData();
 
-    // 2. Find the next report ID
+    // Find the next report ID.
     const nextId = await new Promise((resolve, reject) => {
       db.get(
         `SELECT COALESCE(MAX(id), 0) + 1 AS id FROM reports`,
@@ -43,16 +75,15 @@ app.post("/reports", async (req, res) => {
       );
     });
 
-    // 3. Decide where the PDF will be stored
     const outputPath = path.join(
       "reports",
       `${nextId}.pdf`
     );
 
-    // 4. Generate the PDF
+    // Generate PDF.
     await generatePdf(report, outputPath);
 
-    // 5. Save the report record
+    // Save report information.
     await new Promise((resolve, reject) => {
       db.run(
         `
@@ -70,7 +101,6 @@ app.post("/reports", async (req, res) => {
       );
     });
 
-    // 6. Return the report link
     res.status(201).json({
       id: nextId,
       file: `/reports/${nextId}/file`
@@ -83,81 +113,6 @@ app.post("/reports", async (req, res) => {
       error: "Failed to generate report"
     });
   }
-});
-
-// Get report information
-app.get("/reports/:id", (req, res) => {
-  db.get(
-    `
-    SELECT id, path, created_at
-    FROM reports
-    WHERE id = ?
-    `,
-    [req.params.id],
-    (err, row) => {
-      if (err) {
-        console.error(err);
-
-        return res.status(500).json({
-          error: "Failed to get report"
-        });
-      }
-
-      if (!row) {
-        return res.status(404).json({
-          error: "Report not found"
-        });
-      }
-
-      res.json({
-        id: row.id,
-        path: row.path,
-        created_at: row.created_at,
-        file: `/reports/${row.id}/file`
-      });
-    }
-  );
-});
-
-// Download the PDF
-app.get("/reports/:id/file", (req, res) => {
-  db.get(
-    `
-    SELECT path
-    FROM reports
-    WHERE id = ?
-    `,
-    [req.params.id],
-    (err, row) => {
-      if (err) {
-        console.error(err);
-
-        return res.status(500).json({
-          error: "Failed to get report file"
-        });
-      }
-
-      if (!row) {
-        return res.status(404).json({
-          error: "Report not found"
-        });
-      }
-
-      const filePath = path.resolve(row.path);
-
-      res.sendFile(filePath, (sendError) => {
-        if (sendError) {
-          console.error(sendError);
-
-          if (!res.headersSent) {
-            res.status(404).json({
-              error: "Report file not found"
-            });
-          }
-        }
-      });
-    }
-  );
 });
 
 app.listen(PORT, () => {
