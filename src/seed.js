@@ -49,6 +49,11 @@ db.serialize(() => {
   // Make the seed safe to run repeatedly.
   db.run(`DELETE FROM orders`);
 
+  db.run(`
+    DELETE FROM sqlite_sequence
+    WHERE name = 'orders'
+  `);
+
   const stmt = db.prepare(`
     INSERT INTO orders
     (customer, product, amount, created_at)

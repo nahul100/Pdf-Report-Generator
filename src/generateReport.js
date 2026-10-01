@@ -8,9 +8,9 @@ function buildHtml(report) {
     .map(
       (item, index) => `
         <tr>
-          <td class="rank">${index + 1}</td>
+          <td>${index + 1}</td>
           <td>${item.product}</td>
-          <td class="money">$${Number(item.revenue).toFixed(2)}</td>
+          <td>$${Number(item.revenue).toFixed(2)}</td>
         </tr>
       `
     )
@@ -27,306 +27,212 @@ function buildHtml(report) {
     )
     .join("");
 
+  // Extra rows make the PDF long enough to test page breaks.
   const allOrdersRows = report.allOrders
-    .map(
-      (order) => `
-        <tr>
-          <td>${order.id}</td>
-          <td>${order.customer}</td>
-          <td>${order.product}</td>
-          <td class="money">$${Number(order.amount).toFixed(2)}</td>
-          <td>${order.created_at}</td>
-        </tr>
-      `
-    )
-    .join("");
+    ? report.allOrders
+        .map(
+          (order) => `
+            <tr>
+              <td>${order.id}</td>
+              <td>${order.customer}</td>
+              <td>${order.product}</td>
+              <td>$${Number(order.amount).toFixed(2)}</td>
+              <td>${order.created_at}</td>
+            </tr>
+          `
+        )
+        .join("")
+    : "";
 
   return `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
 
-<style>
+      <style>
+        @page {
+          size: A4;
+          margin: 20mm;
+        }
 
-  @page {
-    size: A4;
-    margin: 16mm 15mm 18mm 15mm;
-  }
+        body {
+          font-family: Arial, sans-serif;
+          color: #222;
+          line-height: 1.5;
+        }
 
-  * {
-    box-sizing: border-box;
-  }
+        h1 {
+          margin-bottom: 5px;
+        }
 
-  body {
-    margin: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    color: #1f2937;
-    font-size: 11px;
-    line-height: 1.4;
-  }
+        .date {
+          color: #666;
+          margin-bottom: 25px;
+        }
 
-  .header {
-    border-bottom: 3px solid #222;
-    padding-bottom: 14px;
-    margin-bottom: 22px;
-  }
+        .summary {
+          display: flex;
+          gap: 20px;
+          margin-bottom: 30px;
+        }
 
-  .title {
-    font-size: 28px;
-    font-weight: 700;
-    margin: 0;
-  }
+        .card {
+          border: 1px solid #ddd;
+          padding: 15px;
+          width: 200px;
+        }
 
-  .subtitle {
-    margin-top: 5px;
-    color: #6b7280;
-    font-size: 11px;
-  }
+        .card-title {
+          color: #666;
+          font-size: 13px;
+        }
 
-  .summary {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 25px;
-  }
+        .card-value {
+          font-size: 24px;
+          font-weight: bold;
+          margin-top: 5px;
+        }
 
-  .card {
-    flex: 1;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    padding: 14px;
-  }
+        h2 {
+          margin-top: 30px;
+          border-bottom: 2px solid #333;
+          padding-bottom: 5px;
+        }
 
-  .card-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    color: #6b7280;
-    letter-spacing: 0.5px;
-  }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+        }
 
-  .card-value {
-    margin-top: 6px;
-    font-size: 21px;
-    font-weight: 700;
-  }
+        th,
+        td {
+          border: 1px solid #ccc;
+          padding: 8px;
+          text-align: left;
+        }
 
-  .section {
-    margin-top: 25px;
-  }
+        th {
+          background: #f2f2f2;
+        }
 
-  .section-title {
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 9px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid #d1d5db;
-  }
+        thead {
+          display: table-header-group;
+        }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-  }
+        tr {
+          break-inside: avoid;
+        }
 
-  thead {
-    display: table-header-group;
-  }
+        .footer {
+          margin-top: 30px;
+          color: #777;
+          font-size: 12px;
+        }
+      </style>
+    </head>
 
-  tr {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
+    <body>
+      <h1>Sales Report</h1>
+      <div class="date">Generated on ${today}</div>
 
-  th {
-    background: #f3f4f6;
-    font-weight: 700;
-    text-align: left;
-    font-size: 10px;
-  }
+      <div class="summary">
+        <div class="card">
+          <div class="card-title">Total Orders</div>
+          <div class="card-value">${report.totalOrders}</div>
+        </div>
 
-  th,
-  td {
-    border-bottom: 1px solid #e5e7eb;
-    padding: 7px 8px;
-    vertical-align: middle;
-  }
-
-  .rank {
-    width: 40px;
-    text-align: center;
-  }
-
-  .money {
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  .top-products th:nth-child(1),
-  .top-products td:nth-child(1) {
-    width: 45px;
-  }
-
-  .top-products th:nth-child(3),
-  .top-products td:nth-child(3) {
-    width: 130px;
-  }
-
-  .daily th:first-child,
-  .daily td:first-child {
-    width: 70%;
-  }
-
-  .daily th:last-child,
-  .daily td:last-child {
-    text-align: right;
-    width: 30%;
-  }
-
-  .orders th:nth-child(1),
-  .orders td:nth-child(1) {
-    width: 8%;
-  }
-
-  .orders th:nth-child(2),
-  .orders td:nth-child(2) {
-    width: 20%;
-  }
-
-  .orders th:nth-child(3),
-  .orders td:nth-child(3) {
-    width: 30%;
-  }
-
-  .orders th:nth-child(4),
-  .orders td:nth-child(4) {
-    width: 20%;
-  }
-
-  .orders th:nth-child(5),
-  .orders td:nth-child(5) {
-    width: 22%;
-  }
-
-  .page-break {
-    page-break-before: always;
-  }
-
-  .footer {
-    margin-top: 25px;
-    padding-top: 8px;
-    border-top: 1px solid #ddd;
-    color: #9ca3af;
-    font-size: 9px;
-  }
-
-</style>
-</head>
-
-<body>
-
-  <div class="header">
-    <div class="title">Sales Report</div>
-    <div class="subtitle">
-      Generated on ${today}
-    </div>
-  </div>
-
-  <div class="summary">
-
-    <div class="card">
-      <div class="card-label">Total Orders</div>
-      <div class="card-value">
-        ${report.totalOrders}
+        <div class="card">
+          <div class="card-title">Total Revenue</div>
+          <div class="card-value">
+            $${Number(report.totalRevenue).toFixed(2)}
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div class="card">
-      <div class="card-label">Total Revenue</div>
-      <div class="card-value">
-        $${Number(report.totalRevenue).toFixed(2)}
+      <h2>Top 5 Products by Revenue</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Revenue</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${topProductsRows}
+        </tbody>
+      </table>
+
+      <h2>Orders per Day — Last 7 Days</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Orders</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${ordersPerDayRows}
+        </tbody>
+      </table>
+
+      <h2>All Orders</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Customer</th>
+            <th>Product</th>
+            <th>Amount</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${allOrdersRows}
+        </tbody>
+      </table>
+
+      <div class="footer">
+        Generated by the FlyRank PDF Report Generator.
       </div>
-    </div>
-
-  </div>
-
-  <div class="section">
-
-    <div class="section-title">
-      Top 5 Products by Revenue
-    </div>
-
-    <table class="top-products">
-
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Product</th>
-          <th>Revenue</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        ${topProductsRows}
-      </tbody>
-
-    </table>
-
-  </div>
-
-  <div class="section">
-
-    <div class="section-title">
-      Orders per Day — Last 7 Days
-    </div>
-
-    <table class="daily">
-
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Orders</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        ${ordersPerDayRows}
-      </tbody>
-
-    </table>
-
-  </div>
-
-  <div class="section page-break">
-
-    <div class="section-title">
-      Order Details
-    </div>
-
-    <table class="orders">
-
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Customer</th>
-          <th>Product</th>
-          <th>Amount</th>
-          <th>Date</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        ${allOrdersRows}
-      </tbody>
-
-    </table>
-
-  </div>
-
-  <div class="footer">
-    FlyRank Backend Track — PDF Report Generator
-  </div>
-
-</body>
-</html>
-`;
+    </body>
+    </html>
+  `;
 }
+
+async function generatePdf() {
+  const report = await getReportData();
+
+  const browser = await chromium.launch();
+
+  try {
+    const page = await browser.newPage();
+
+    const html = buildHtml(report);
+
+    await page.setContent(html);
+
+    await page.pdf({
+      path: "reports/test.pdf",
+      format: "A4",
+      printBackground: true
+    });
+
+    console.log("PDF generated: reports/test.pdf");
+  } finally {
+    await browser.close();
+  }
+}
+
+generatePdf().catch((error) => {
+  console.error("Failed to generate PDF:", error);
+  process.exit(1);
+});
