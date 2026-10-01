@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { getReportData } = require("./reportData");
+//const { getReportData } = require("./reportData");
 
 function buildHtml(report) {
   const today = new Date().toISOString().split("T")[0];
@@ -208,9 +208,7 @@ function buildHtml(report) {
   `;
 }
 
-async function generatePdf() {
-  const report = await getReportData();
-
+async function generatePdf(report, outputPath) {
   const browser = await chromium.launch();
 
   try {
@@ -221,18 +219,22 @@ async function generatePdf() {
     await page.setContent(html);
 
     await page.pdf({
-      path: "reports/test.pdf",
+      path: outputPath,
       format: "A4",
       printBackground: true
     });
 
-    console.log("PDF generated: reports/test.pdf");
+    console.log(`PDF generated: ${outputPath}`);
   } finally {
     await browser.close();
   }
 }
 
-generatePdf().catch((error) => {
-  console.error("Failed to generate PDF:", error);
-  process.exit(1);
-});
+module.exports = {
+  buildHtml,
+  generatePdf
+};
+// generatePdf().catch((error) => {
+//   console.error("Failed to generate PDF:", error);
+//   process.exit(1);
+// });
