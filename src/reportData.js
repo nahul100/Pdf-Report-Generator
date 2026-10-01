@@ -53,7 +53,26 @@ function getReportData() {
                     if (err) return reject(err);
 
                     report.ordersPerDay = rows;
+                         db.all(
+                         `
+                            SELECT
+                                id,
+                                customer,
+                                product,
+                                amount,
+                                created_at
+                            FROM orders
+                            ORDER BY id ASC
+                            `,
+                            (err, rows) => {
+                                if (err) return reject(err);
 
+                                report.allOrders = rows;
+
+                                
+                            }
+                      );
+                 
                     db.close();
 
                     resolve(report);
