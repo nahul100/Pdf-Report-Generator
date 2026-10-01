@@ -1,0 +1,5 @@
+node_modules/
+data/report.db
+reports/
+downloaded-report.pdf
+.env

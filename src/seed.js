@@ -70,7 +70,7 @@ db.serialize(() => {
     const amount = randomAmount();
     const createdAt = randomDate();
 
-    stmt.run(customer, product, amount, createdAt);
+    stmt.run(customer, product, amount, createdAt); 
   }
 
   stmt.finalize(() => {
